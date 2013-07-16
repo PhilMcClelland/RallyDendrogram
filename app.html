@@ -65,7 +65,7 @@
                         model: 'UserStory',
                         autoLoad: true,
                         limit: Infinity,
-                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState'],
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID'],
                         listeners: {
                             load: function (store, stories) {
 
@@ -74,16 +74,19 @@
                                 Ext.Array.each(stories, function (story) {
 
                                     if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
-                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ParentID: story.get('Parent').FormattedID });
+                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), ParentID: story.get('Parent').FormattedID });
                                     }
                                     else {
-                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState') });
+                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID') });
                                     }
+
                                 });
+
+                                
 
                                 var convertedStoryArray = convert(storyArray);
 
-                                var margin = {top: 20, right: 120, bottom: 20, left: 120},
+                                var margin = { top: 20, right: 120, bottom: 20, left: 120 },
                                 width = 3000 - margin.right - margin.left,
                                 height = 2000 - margin.top - margin.bottom;
 
@@ -95,7 +98,7 @@
                                 .size([height, width]);
 
                                 var diagonal = d3.svg.diagonal()
-                                .projection(function(d) { return [d.y, d.x]; });
+                                .projection(function (d) { return [d.y, d.x]; });
 
                                 var svg = d3.select("body").append("svg")
                                 .attr("width", width + margin.right + margin.left)
@@ -127,10 +130,11 @@
 
                                     // Update the nodes
                                     var node = svg.selectAll("g.node")
-                                    .data(nodes, function(d) { return d.id || (d.id = ++i); });
+                                    .data(nodes, function (d) { return d.id || (d.id = ++i); });
 
                                     // Enter any new nodes at the parent's previous position.
                                     var nodeEnter = node.enter().append("g")
+<<<<<<< HEAD
                                     .attr("class", function(d) {
                                         classString = "node";
                                         console.log(d);
@@ -158,27 +162,31 @@
                                         return classString;
                                     })
                                     .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+=======
+                                    .attr("class", "node")
+                                    .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+>>>>>>> fetching ObjectID (used to construct URL)
                                     .on("click", click);
 
                                     nodeEnter.append("circle")
                                     .attr("r", 1e-6)
-                                    .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+                                    .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
 
                                     nodeEnter.append("text")
-                                    .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+                                    .attr("x", function (d) { return d.children || d._children ? -10 : 10; })
                                     .attr("dy", ".35em")
-                                    .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
-                                    .text(function(d) { return d.name; })
+                                    .attr("text-anchor", function (d) { return d.children || d._children ? "end" : "start"; })
+                                    .text(function (d) { return d.name; })
                                     .style("fill-opacity", 1e-6);
 
                                     // Transition nodes to their new position.
                                     var nodeUpdate = node.transition()
                                     .duration(duration)
-                                    .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+                                    .attr("transform", function (d) { return "translate(" + d.y + "," + d.x + ")"; });
 
                                     nodeUpdate.select("circle")
                                     .attr("r", 4.5)
-                                    .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+                                    .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
 
                                     nodeUpdate.select("text")
                                     .style("fill-opacity", 1)
@@ -187,7 +195,7 @@
                                     // Transition exiting nodes to the parent's new position.
                                     var nodeExit = node.exit().transition()
                                     .duration(duration)
-                                    .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+                                    .attr("transform", function (d) { return "translate(" + source.y + "," + source.x + ")"; })
                                     .remove();
 
                                     nodeExit.select("circle")
@@ -198,14 +206,14 @@
 
                                     // Update the links
                                     var link = svg.selectAll("path.link")
-                                    .data(links, function(d) { return d.target.id; });
+                                    .data(links, function (d) { return d.target.id; });
 
                                     // Enter any new links at the parent's previous position.
                                     link.enter().insert("path", "g")
                                     .attr("class", "link")
-                                    .attr("d", function(d) {
-                                        var o = {x: source.x0, y: source.y0};
-                                        return diagonal({source: o, target: o});
+                                    .attr("d", function (d) {
+                                        var o = { x: source.x0, y: source.y0 };
+                                        return diagonal({ source: o, target: o });
                                     });
 
                                     // Transition links to their new position.
@@ -216,14 +224,14 @@
                                     // Transition exiting nodes to the parent's new position.
                                     link.exit().transition()
                                     .duration(duration)
-                                    .attr("d", function(d) {
-                                        var o = {x: source.x, y: source.y};
-                                        return diagonal({source: o, target: o});
+                                    .attr("d", function (d) {
+                                        var o = { x: source.x, y: source.y };
+                                        return diagonal({ source: o, target: o });
                                     })
                                     .remove();
 
                                     // Stash the old positions for transition.
-                                    nodes.forEach(function(d) {
+                                    nodes.forEach(function (d) {
                                         d.x0 = d.x;
                                         d.y0 = d.y;
                                     });
@@ -234,7 +242,7 @@
                                     if (d.children) {
                                         d._children = d.children;
                                         d.children = null;
-                                        } else {
+                                    } else {
                                         d.children = d._children;
                                         d._children = null;
                                     }
