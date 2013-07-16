@@ -11,6 +11,13 @@
             font: 10px sans-serif;
         }
 
+        .node.review { fill: #33CC00; }
+        .node.defined { fill: #CC00FF; }
+        .node.in-progress { fill: #6600CC; }
+        .node.completed { fill: #0033CC; }
+        .node.accepted { fill: #FF9999; }
+        .node.ready { fill: #CC0000; }
+
         .link {
             fill: none;
             stroke: #ccc;
@@ -124,7 +131,32 @@
 
                                     // Enter any new nodes at the parent's previous position.
                                     var nodeEnter = node.enter().append("g")
-                                    .attr("class", "node")
+                                    .attr("class", function(d) {
+                                        classString = "node";
+                                        console.log(d);
+                                        switch( d.ScheduleState ) {
+                                            case "In Review": 
+                                                classString += " review";
+                                                break;
+                                            case "Defined": 
+                                                classString += " defined";
+                                                break;
+                                            case "In-Progress": 
+                                                classString += " in-progress";
+                                                break;
+                                            case "Completed": 
+                                                classString += " completed";
+                                                break;
+                                            case "Accepted": 
+                                                classString += " accepted";
+                                                break;
+                                            case "Ready for Release": 
+                                                classString += " ready";
+                                                break;
+                                            default: break;
+                                        }
+                                        return classString;
+                                    })
                                     .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
                                     .on("click", click);
 
