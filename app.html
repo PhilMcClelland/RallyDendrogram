@@ -18,91 +18,67 @@
         }
 
     </style>
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js" type="text/javascript"></script>
 </head>
 <body>
     <script>
-        var margin = {top: 20, right: 120, bottom: 20, left: 120};
-        var width = 960 - margin.right - margin.left;
-        var height = 1000 - margin.top - margin.bottom;
 
-        var i = 0,
-        duration = 750,
-        root;
+        // Credit for convert to Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
+        function convert(array) {
+            var map = {};
 
-        var cluster = d3.layout.cluster()
-        .size([height, width - 160]);
+            for (var i = 0; i < array.length; i++) {
+                var obj = array[i];
+                obj.children = [];
 
-        var diagonal = d3.svg.diagonal()
-        .projection(function(d) { return [d.y, d.x]; });
+                map[obj.FormattedID] = obj;
 
-        var svg = d3.select("body").append("svg")
-        .attr("width", width + margin.right + margin.left )
-        .attr("height", height + margin.top + margin.bottom )
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        stories = [];
-        var b = { name: "b", parent: { name: "a" }};
-        var c = { name: "c", parent: { name: "a" }};
-
-        var h = { name: "h", parent: { name: "g" }};
-        var i = { name: "i", parent: { name: "g" }};
-
-        stories.push({ name: "d", parent: b });
-        stories.push({ name: "e", parent: b });
-
-        stories.push({ name: "f", parent: c });
-
-        stories.push({ name: "j", parent: h });
-
-        stories.push({ name: "k", parent: i });
-        stories.push({ name: "l", parent: i });
-        stories.push({ name: "m", parent: i });
-
-        function recursiveBuild( a ) {
-            var r = [];
-            var parentless = [];
-            var found = false;
-            for( var i = 0; i < a.length; i++ ) {
-                if( a[i].parent === undefined ) {
-                    parentless.push( a[i] );
-                    continue;
+                var parent = obj.ParentID || '-';
+                if (!map[parent]) {
+                    map[parent] = {
+                        children: []
+                    };
                 }
-
-                var children = a[i].children;
-                for( var j = 0; j < r.length; j++ ) {
-                    if( a[i].parent.name == r[j].name ) {
-                        r[j].children.push({ name: a[i].name, children: children });    
-                        found = true;
-                        break;
-                    }
-                }
-
-                if( !found ) {
-                    var parent = a[i].parent;
-                    r.push({
-                        name: parent.name,
-                        parent: parent.parent,
-                        children: [{
-                            name: a[i].name,
-                            children: children
-                        }]
-                    });
-                }
-                found = false;
+                map[parent].children.push(obj);
             }
-            return parentless.length == a.length ? [] : r.concat( parentless );
+
+            return { name: "D2L", children: map['-'].children };
+
         }
 
-        var temp, arr = stories;
-        do {
-            temp = arr;
-            arr = recursiveBuild( temp );
-        } while ( arr.length != 0 );
+        Rally.onReady(function () {
+            Ext.application({
+                name: 'MyApp',
+                launch: function () {
 
-        head = { name: "D2L", children: temp };
+                var storyArray = [];
+
+                    Ext.create('Rally.data.WsapiDataStore', {
+                        model: 'UserStory',
+                        autoLoad: true,
+                        limit: Infinity,
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent'],
+                        listeners: {
+                            load: function (store, stories) {
+
+
+
+                                Ext.Array.each(stories, function (story) {
+
+                                    if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ParentID: story.get('Parent').FormattedID });
+                                    }
+                                    else {
+                                        storyArray.push({ name: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description') });
+                                    }
+
+
+
+                                });
+
+                var convertedStoryArray = convert(storyArray);
 
         var margin = {top: 20, right: 120, bottom: 20, left: 120},
         width = 960 - margin.right - margin.left,
@@ -124,7 +100,7 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        root = head;
+        root = convertedStoryArray;
         root.x0 = height / 2;
         root.y0 = 0;
 
@@ -141,6 +117,7 @@
 
         d3.select(self.frameElement).style("height", "800px");
 
+        
         function update(source) {
 
             // Compute the new tree layout.
@@ -238,5 +215,16 @@
             update(d);
         }
 
+    }
+}
+});
+
+
+                }
+            });
+
+
+
+        });
     </script>
 </body>
