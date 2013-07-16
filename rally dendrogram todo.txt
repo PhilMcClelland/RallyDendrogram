@@ -1,0 +1,5 @@
+- better width
+- colours by status
+- click link to user story url
+- iframe to actually put this into rally
+- expanded onLoad (or expand based on status?)
