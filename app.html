@@ -86,9 +86,9 @@
 
                                 var convertedStoryArray = convert(storyArray);
 
-                                var margin = { top: 20, right: 120, bottom: 20, left: 120 },
+                                var margin = {top: 20, right: 120, bottom: 20, left: 120},
                                 width = 3000 - margin.right - margin.left,
-                                height = 2000 - margin.top - margin.bottom;
+                                height = ( storyArray.length * 20 ) - margin.top - margin.bottom;
 
                                 var i = 0,
                                 duration = 500,
@@ -136,7 +136,6 @@
                                     var nodeEnter = node.enter().append("g")
                                     .attr("class", function (d) {
                                         classString = "node";
-                                        console.log(d);
                                         switch (d.ScheduleState) {
                                             case "In Review":
                                                 classString += " review";
@@ -187,8 +186,7 @@
                                     .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
 
                                     nodeUpdate.select("text")
-                                    .style("fill-opacity", 1)
-                                    .style("color", "pink");
+                                    .style("fill-opacity", 1);
 
                                     // Transition exiting nodes to the parent's new position.
                                     var nodeExit = node.exit().transition()
