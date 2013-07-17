@@ -24,6 +24,18 @@
             stroke-width: 1.5px;
         }
 
+        div.tooltip {   
+          position: absolute;           
+          text-align: left;
+          width: 300px;                      
+          padding: 2px;             
+          font: 12px sans-serif;        
+          background: lightsteelblue;   
+          border: 0px;      
+          border-radius: 8px;           
+          pointer-events: none;         
+        }
+
     </style>
     <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
@@ -65,9 +77,13 @@
                         model: 'UserStory',
                         autoLoad: true,
                         limit: Infinity,
-                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID'],
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner'],
                         listeners: {
                             load: function (store, stories) {
+
+                                var div = d3.select("body").append("div")
+                                    .attr("class", "tooltip")
+                                    .style("opacity", 0);
 
                                 var maxLength = 0; // Length of longest story name (after truncation)
                                 var truncateLength = 80; // truncates story names to this number of characters
@@ -81,17 +97,17 @@
                                     if (truncatedName.length == truncateLength) { truncatedName = truncatedName + "..."; }
 
                                     if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
-                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), ParentID: story.get('Parent').FormattedID });
+                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ParentID: story.get('Parent').FormattedID });
                                     }
                                     else {
-                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID') });
+                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner') });
                                     }
 
                                     if (truncatedName.length > maxLength) {
                                         maxLength = truncatedName.length;
                                     }
 
-                                    console.log(maxLength);
+                                    console.log(story);
 
                                 });
 
@@ -140,9 +156,10 @@
 
                                 update(root);
 
-                                d3.select(self.frameElement).style("height", "800px");
+                                //d3.select(self.frameElement).style("height", "800px");
 
                                 function update(source) {
+
 
                                     // Compute the new tree layout.
                                     var nodes = tree.nodes(root).reverse(),
@@ -181,7 +198,34 @@
                                     })
                                     .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
                                     .on("click", click)
-                                    .on("contextmenu", rclick);
+                                    .on("contextmenu", rclick)
+                                    .on("mouseover", function (d) {
+
+                                        var content = "";
+
+                                        
+                                        if (d.Owner !== null) {
+                                            content = content + "<b>Owner:</b> " + d.Owner._refObjectName;
+                                        } else {
+                                            content = content + "<b>Owner:</b> (None)";
+                                        }
+                                        
+                                        if (d.Description !== null) {
+                                            content = content + "<br><br><b>Description:</b>: " + d.Description;
+                                        }
+                                        
+                                        div.transition()
+                                            .duration(200)
+                                            .style("opacity", .9);
+                                        div.html(content)
+                                            .style("left", (d3.event.pageX) + "px")
+                                            .style("top", (d3.event.pageY - 28) + "px");
+                                    })
+                                    .on("mouseout", function (d) {
+                                        div.transition()
+                                            .duration(500)
+                                            .style("opacity", 0);
+                                    });
 
                                     nodeEnter.append("circle")
                                     .attr("r", 1e-6)
