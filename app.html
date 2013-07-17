@@ -168,8 +168,6 @@
                                         return classString;
                                     })
                                     .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
-                                    .attr("class", "node")
-                                    .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
                                     .on("click", click)
                                     .on("contextmenu", rclick);
 
@@ -194,6 +192,8 @@
                                     .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
 
                                     nodeUpdate.select("text")
+                                    .attr("x", function (d) { return d.children ? -10 : 10; })
+                                    .attr("text-anchor", function (d) { return d.children ? "end" : "start"; })
                                     .style("fill-opacity", 1);
 
                                     // Transition exiting nodes to the parent's new position.
