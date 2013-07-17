@@ -82,7 +82,15 @@
 
                                 });
 
+    
+                                function decode(str) {
+                                    return $("<div/>").html(str).text();
+                                }
 
+                                $.each(storyArray, function(i, s) {
+                                    s.name = decode(s.name);
+                                    s.Description = decode(s.Description);
+                                });
 
                                 var convertedStoryArray = convert(storyArray);
 
