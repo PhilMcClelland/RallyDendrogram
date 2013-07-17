@@ -42,6 +42,7 @@
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js" type="text/javascript"></script>
 </head>
 <body>
+    <button onclick="toggle()" style="position:fixed;top:20;left:25">Toggle!</button>
     <script>
 
         // Credit for convert to Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
@@ -65,6 +66,9 @@
             return { name: "D2L", children: map['-'].children };
 
         }
+
+        var treeToggle = false;
+        var toggle = function() {}
 
         Rally.onReady(function () {
             Ext.application({
@@ -94,7 +98,7 @@
 
                                     var truncatedName = story.get('Name').substring(0, truncateLength);
 
-                                    if (truncatedName.length == truncateLength) { truncatedName = truncatedName + "..."; }
+                                    if (truncatedName.length == truncateLength) { truncatedName += "..."; }
 
                                     if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
                                         storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ParentID: story.get('Parent').FormattedID });
@@ -123,15 +127,33 @@
                                 var convertedStoryArray = convert(storyArray);
 
                                 var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: 120 },
-                                width = 3000 - margin.right - margin.left,
                                 height = (storyArray.length * heightPerStory) - margin.top - margin.bottom;
 
                                 var i = 0,
                                 duration = 500,
                                 root;
 
-                                var tree = d3.layout.cluster()
-                                .size([height, width]);
+                                root = convertedStoryArray;
+                                root.x0 = height / 2;
+                                root.y0 = 0;
+
+                                toggle = function () {
+                                    treeToggle = !treeToggle;
+                                    update(root);    
+                                }
+
+                                var tree = d3.layout.cluster();
+
+                                var maxDepth = 0;
+                                tree.nodes(root).forEach(function(d) {
+                                    if( d.depth > maxDepth ) {
+                                        maxDepth = d.depth;
+                                    }
+                                });
+
+                                var width = ( 180 * ( maxDepth + 3 ) ) - margin.right - margin.left;
+
+                                tree.size([height, width]);
 
                                 var diagonal = d3.svg.diagonal()
                                 .projection(function (d) { return [d.y, d.x]; });
@@ -141,10 +163,6 @@
                                 .attr("height", height + margin.top + margin.bottom)
                                 .append("g")
                                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-                                root = convertedStoryArray;
-                                root.x0 = height / 2;
-                                root.y0 = 0;
 
                                 function collapse(d) {
                                     if (d.children) {
@@ -164,6 +182,15 @@
                                     // Compute the new tree layout.
                                     var nodes = tree.nodes(root).reverse(),
                                     links = tree.links(nodes);
+
+                                    // Position for nodes based on depth
+                                    nodes.forEach(function(d) {
+                                        if( treeToggle || d.children ) {
+                                            d.y = d.depth * 180;
+                                        } else {
+                                            d.y = maxDepth * 180;
+                                        }
+                                    });
 
                                     // Update the nodes
                                     var node = svg.selectAll("g.node")
@@ -203,15 +230,13 @@
 
                                         var content = "";
 
+                                        if ( !d.Owner && !d.Description ) return; 
+
+                                        content = "<b>Owner:</b> ";
+                                        content += d.Owner ? d.Owner._refObjectName : "(None)";
                                         
-                                        if (d.Owner !== null) {
-                                            content = content + "<b>Owner:</b> " + d.Owner._refObjectName;
-                                        } else {
-                                            content = content + "<b>Owner:</b> (None)";
-                                        }
-                                        
-                                        if (d.Description !== null) {
-                                            content = content + "<br><br><b>Description:</b>: " + d.Description;
+                                        if (d.Description) {
+                                            content += "<br><br><b>Description:</b>: " + d.Description;
                                         }
                                         
                                         div.transition()
