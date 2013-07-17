@@ -172,7 +172,7 @@
                                     // Enter any new nodes at the parent's previous position.
                                     var nodeEnter = node.enter().append("g")
                                     .attr("class", function (d) {
-                                        classString = "node";
+                                        var classString = "node";
                                         switch (d.ScheduleState) {
                                             case "In Review":
                                                 classString += " review";
