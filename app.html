@@ -1,6 +1,5 @@
 <head>
     <style>
-
         .node circle {
             fill: #fff;
             stroke: steelblue;
@@ -35,146 +34,13 @@
           border-radius: 8px;           
           pointer-events: none;         
         }
-
-      .context-menu {
-        -webkit-border-radius: 5px;
-        -moz-border-radius: 5px;
-        border-radius: 5px;
-
-        background-color: #f2f2f2;
-        border: 1px solid #999;
-
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-      }
-      .context-menu a {
-        display: block;
-        padding: 3px;
-        text-decoration: none;
-        color: #333;
-      }
-      .context-menu a:hover {
-        background-color: #666;
-        color: white;
-      }
-
     </style>
+
     <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js" type="text/javascript"></script>
-    <script>
-        /*
-         * jQuery.contextMenu - Show a custom context when right clicking something
-         * Jonas Arnklint, http://github.com/arnklint/jquery-contextMenu
-         * Released into the public domain
-         * Date: Jan 14, 2011
-         * @author Jonas Arnklint
-         * @version 1.7
-         *
-        */
-        // Making a local '$' alias of jQuery to support jQuery.noConflict
-        (function($) {
-          jQuery.fn.contextMenu = function ( name, actions, options ) {
-            var me = this,
-            win = $(window),
-            menu = $('<ul id="'+name+'" class="context-menu"></ul>').hide().appendTo('body'),
-            activeElement = null, // last clicked element that responds with contextMenu
-            hideMenu = function() {
-              $('.context-menu:visible').each(function() {
-                $(this).trigger("closed");
-                $(this).hide();
-                $('body').unbind('click', hideMenu);
-                menu.unbind('closed');
-              });
-            },
-            default_options = {
-              disable_native_context_menu: false, // disables the native contextmenu everywhere you click
-              leftClick: false // show menu on left mouse click instead of right
-            },
-            options = $.extend(default_options, options);
-
-            $(document).bind('contextmenu', function(e) {
-              if (options.disable_native_context_menu) {
-                e.preventDefault();
-              }
-              hideMenu();
-            });
-
-            $.each(actions, function(me, itemOptions) {
-              if (itemOptions.link) {
-                var link = itemOptions.link;
-              } else {
-                var link = '<a href="#">'+me+'</a>';
-              }
-
-              var menuItem = $('<li>' + link + '</li>');
-
-              if (itemOptions.klass) {
-                menuItem.attr("class", itemOptions.klass);
-              }
-
-              menuItem.appendTo(menu).bind('click', function(e) {
-                itemOptions.click(activeElement);
-                e.preventDefault();
-              });
-            });
-
-            if (options.leftClick) {
-              var mouseEvent = 'click';
-            } else {
-              var mouseEvent = 'contextmenu';
-            }
-
-            var mouseEventFunc = function(e){
-              // Hide any existing context menus
-              hideMenu();
-
-              activeElement = $(this); // set clicked element
-
-              if (options.showMenu) {
-                options.showMenu.call(menu, activeElement);
-              }
-
-              // Bind to the closed event if there is a hideMenu handler specified
-              if (options.hideMenu) {
-                menu.bind("closed", function() {
-                  options.hideMenu.call(menu, activeElement);
-                });
-              }
-
-              menu.css({
-                visibility: 'hidden',
-                position: 'absolute',
-                zIndex: 1000
-              });
-
-              // include margin so it can be used to offset from page border.
-              var mWidth = menu.outerWidth(true),
-                mHeight = menu.outerHeight(true),
-                xPos = ((e.pageX - win.scrollLeft()) + mWidth < win.width()) ? e.pageX : e.pageX - mWidth,
-                yPos = ((e.pageY - win.scrollTop()) + mHeight < win.height()) ? e.pageY : e.pageY - mHeight;
-
-              menu.show(0, function() {
-                $('body').bind('click', hideMenu);
-              }).css({
-                visibility: 'visible',
-                top: yPos + 'px',
-                left: xPos + 'px',
-                zIndex: 1000
-              });
-
-              return false;
-            }
-
-            if (options.delegateEventTo) {
-              return me.on(mouseEvent, options.delegateEventTo, mouseEventFunc)
-            } else {
-              return me.bind(mouseEvent, mouseEventFunc);
-            }
-          }
-        })(jQuery);
-    </script>
+    <script src="http://medialize.github.io/jQuery-contextMenu/src/jquery.contextMenu.js" type="text/javascript"></script>
+    <link rel="stylesheet" type="text/css" href="http://medialize.github.io/jQuery-contextMenu/src/jquery.contextMenu.css">
 </head>
 <body>
     <button onclick="toggle()" style="position:fixed;top:20;left:25">Toggle!</button>
@@ -201,8 +67,56 @@
 
         }
 
-        var treeToggle = false;
-        var toggle = function() {}
+        // Globals
+        var treeToggle = true;
+        var toggle = function() {};
+        var update = function() {};
+
+        var numStories = 0;
+        var root;
+
+        function addNewNode(nodes, id, newNode) {
+            for( var i = 0; i < nodes.length; i++ ) {
+                var node = nodes[i];
+                if( node.id == id ) {
+                    if( !node.children ) node.children = [];
+                    node.children.push( newNode );
+                    return true;
+                }
+                if( node.children ) {
+                    if( addNewNode( node.children, id, newNode ) ) return true;
+                }
+            }
+        }
+
+        // Context menu handler
+        $(function(){
+            $.contextMenu({
+                selector: '.context-menu', 
+                callback: function(key, options) {
+                    var story = options.$trigger[0].__data__;
+                    console.log(story);
+                    switch( key ) {
+                        case "goto":
+                            window.open("https://rally1.rallydev.com/#/detail/userstory/" + story.ObjectID);
+                            break;
+                        case "add":
+                            var newNode = {
+                                name: "Test node",
+                                depth: story.depth + 1,
+                                id: ++numStories
+                            }
+                            addNewNode([root], story.id, newNode );
+                            update(root);
+                        default: break;
+                    }
+                },
+                items: {
+                "goto": {name: "Go to story", icon: "edit"},
+                "add": {name: "Add new story", icon: "add" }
+                }
+            });
+        });
 
         Rally.onReady(function () {
             Ext.application({
@@ -255,15 +169,14 @@
                                     s.Description = decode(s.Description);
                                 });
 
-                                var numStories = storyArray.length;
+                                numStories = storyArray.length;
                                 var convertedStoryArray = convert(storyArray);
 
                                 var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: 120 },
                                 height = (storyArray.length * heightPerStory) - margin.top - margin.bottom;
 
                                 var i = 0,
-                                duration = 500,
-                                root;
+                                duration = 500;
 
                                 root = convertedStoryArray;
                                 root.x0 = height / 2;
@@ -304,11 +217,7 @@
                                     }
                                 }
 
-                                update(root);
-
-                                //d3.select(self.frameElement).style("height", "800px");
-
-                                function update(source) {
+                                update = function(source) {
 
 
                                     // Compute the new tree layout.
@@ -331,7 +240,7 @@
                                     // Enter any new nodes at the parent's previous position.
                                     var nodeEnter = node.enter().append("g")
                                     .attr("class", function (d) {
-                                        var classString = "node";
+                                        var classString = "context-menu node";
                                         switch (d.ScheduleState) {
                                             case "In Review":
                                                 classString += " review";
@@ -357,7 +266,6 @@
                                     })
                                     .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
                                     .on("click", click)
-                                    .on("contextmenu", rclick)
                                     .on("mouseover", function (d) {
 
                                         var content = "";
@@ -454,6 +362,8 @@
                                     });
                                 }
 
+                                update(root);
+
                                 // Toggle children on click.
                                 function click(d) {
                                     if (d.children) {
@@ -466,48 +376,6 @@
                                     update(d);
                                 }
 
-                                function addNewNode(nodes, id, newNode) {
-                                    for( var i = 0; i < nodes.length; i++ ) {
-                                        var node = nodes[i];
-                                        if( node.id == id ) {
-                                            if( !node.children ) node.children = [];
-                                            node.children.push( newNode );
-                                            return true;
-                                        }
-                                        if( node.children ) {
-                                            if( addNewNode( node.children, id, newNode ) ) {
-                                                return true;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Right-click handler:  Open the selected user story in a new window
-                                function rclick(d) {
-                                    console.log(root);
-                                    console.log(d);
-                                    $('.node').contextMenu('context-menu-1', {
-                                        'Go to story': {
-                                            click: function(element) {
-                                                window.open("https://rally1.rallydev.com/#/detail/userstory/" + d.ObjectID);
-                                            }
-                                        },
-                                        'Add': {
-                                            click: function(element){
-                                                var newNode = {
-                                                    name: "Test node",
-                                                    depth: d.depth + 1,
-                                                    id: ++numStories
-                                                }
-                                                addNewNode([root], d.id, newNode );
-                                                update(root);
-                                            }
-                                        }
-                                    });
-
-                                    d3.event.preventDefault();
-
-                                }
                             }
                         }
                     });
