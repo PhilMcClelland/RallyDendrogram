@@ -34,17 +34,29 @@
           border-radius: 8px;           
           pointer-events: none;         
         }
+
+        button {
+            position: fixed;
+            left: 25;
+            z-index: 1;
+            width: 75;
+        }
     </style>
 
     <script src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js" type="text/javascript"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js" type="text/javascript"></script>
+
     <script src="https://dl.dropboxusercontent.com/u/14215242/jquery.contextMenu.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://dl.dropboxusercontent.com/u/14215242/jquery.contextMenu.css" type="text/css">
+
     <script src="https://dl.dropboxusercontent.com/u/14215242/jquery.panzoom.js"></script>
-    <link rel="stylesheet" href="https://dl.dropboxusercontent.com/u/14215242/jquery.contextMenu.css" type="text/css" >
 </head>
 <body>
-    <button onclick="toggle()" style="position:fixed;top:20;left:25">Toggle!</button>
+    <button onclick="toggle()" style="top:20;">Toggle!</button>
+    <button class="zoomIn" style="top:50;">Zoom in!</button>
+    <button class="zoomOut" style="top:80;">Zoom out!</button>
+    <button class="reset" onclick="expand(root);" style="top:110;">Reset!</button>
     <script>
         // Credit for convert to Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
         function convert(array) {
@@ -72,23 +84,35 @@
         var treeToggle = true;
         var toggle = function() {};
         var update = function() {};
+        var click = function(d) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else {
+                d.children = d._children;
+                d._children = null;
+            }
+            update(d);
+        }
+        
+        function collapse(d) {
+            if (d.children) {
+                d._children = d.children;
+                d._children.forEach(collapse);
+                d.children = null;
+            }
+        }
+
+        function expand(d) {
+            if (d._children) {
+                d.children = d._children;
+                d.children.forEach(expand);
+                d._children = null;
+            }
+        }
 
         var numStories = 0;
         var root;
-
-        function addNewNode(nodes, id, newNode) {
-            for( var i = 0; i < nodes.length; i++ ) {
-                var node = nodes[i];
-                if( node.id == id ) {
-                    if( !node.children ) node.children = [];
-                    node.children.push( newNode );
-                    return true;
-                }
-                if( node.children ) {
-                    if( addNewNode( node.children, id, newNode ) ) return true;
-                }
-            }
-        }
 
         // Context menu handler
         $(function(){
@@ -101,19 +125,29 @@
                             window.open("https://rally1.rallydev.com/#/detail/userstory/" + story.ObjectID);
                             break;
                         case "add":
-                            var newNode = {
+                            var newStory = {
                                 name: "Test node",
                                 depth: story.depth + 1,
                                 id: ++numStories
                             }
-                            addNewNode([root], story.id, newNode );
-                            update(root);
+                            if( !story.children ) story.children = [];
+                            story.children.push( newStory );
+                            break;
+                        case "collapse":
+                            collapse(story);
+                            break;
+                        case "expand":
+                            expand(story);
+                            break;
                         default: break;
                     }
+                    update(story);
                 },
                 items: {
-                "goto": {name: "Go to story", icon: "edit"},
-                "add": {name: "Add new story", icon: "add" }
+                    "goto": {name: "Go to story"},
+                    "add": {name: "Add new story"},
+                    "collapse": {name: "Collapse all" },
+                    "expand": {name: "Expand all"}
                 }
             });
         });
@@ -209,14 +243,6 @@
                                 .attr("height", height + margin.top + margin.bottom)
                                 .append("g")
                                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-                                function collapse(d) {
-                                    if (d.children) {
-                                        d._children = d.children;
-                                        d._children.forEach(collapse);
-                                        d.children = null;
-                                    }
-                                }
 
                                 update = function(source) {
 
@@ -365,20 +391,13 @@
 
                                 update(root);
 
-                                // Toggle children on click.
-                                function click(d) {
-                                    if (d.children) {
-                                        d._children = d.children;
-                                        d.children = null;
-                                    } else {
-                                        d.children = d._children;
-                                        d._children = null;
-                                    }
-                                    update(d);
-                                }
-
                                 $(document).ready(function() {
-                                    $("#panzoom-svg").panzoom();
+                                    $("#panzoom-svg").panzoom({
+                                        $zoomIn: $(".zoomIn"),
+                                        $zoomOut: $(".zoomOut"),
+                                        $reset: $(".reset"),
+                                        cursor: "default"
+                                    });
                                 });
 
                             }
