@@ -36,11 +36,12 @@
         }
     </style>
 
-    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js"></script>
+    <script src="https://rally1.rallydev.com/apps/2.0p5/sdk-debug.js" type="text/javascript"></script>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js" type="text/javascript"></script>
-    <script src="http://medialize.github.io/jQuery-contextMenu/src/jquery.contextMenu.js" type="text/javascript"></script>
-    <link rel="stylesheet" type="text/css" href="http://medialize.github.io/jQuery-contextMenu/src/jquery.contextMenu.css">
+    <script src="https://dl.dropboxusercontent.com/u/14215242/jquery.contextMenu.js" type="text/javascript"></script>
+    <script src="https://dl.dropboxusercontent.com/u/14215242/jquery.panzoom.js"></script>
+    <link rel="stylesheet" href="https://dl.dropboxusercontent.com/u/14215242/jquery.contextMenu.css" type="text/css" >
 </head>
 <body>
     <button onclick="toggle()" style="position:fixed;top:20;left:25">Toggle!</button>
@@ -95,7 +96,6 @@
                 selector: '.context-menu', 
                 callback: function(key, options) {
                     var story = options.$trigger[0].__data__;
-                    console.log(story);
                     switch( key ) {
                         case "goto":
                             window.open("https://rally1.rallydev.com/#/detail/userstory/" + story.ObjectID);
@@ -204,6 +204,7 @@
                                 .projection(function (d) { return [d.y, d.x]; });
 
                                 var svg = d3.select("body").append("svg")
+                                .attr("id", "panzoom-svg")
                                 .attr("width", width + margin.right + margin.left)
                                 .attr("height", height + margin.top + margin.bottom)
                                 .append("g")
@@ -375,6 +376,10 @@
                                     }
                                     update(d);
                                 }
+
+                                $(document).ready(function() {
+                                    $("#panzoom-svg").panzoom();
+                                });
 
                             }
                         }
