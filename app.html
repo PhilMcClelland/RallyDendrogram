@@ -10,12 +10,12 @@
             font: 12px sans-serif;
         }
 
-        .node.review { fill: #33CC00; }
-        .node.defined { fill: #CC00FF; }
-        .node.in-progress { fill: #6600CC; }
-        .node.completed { fill: #0033CC; }
-        .node.accepted { fill: #FF9999; }
-        .node.ready { fill: #CC0000; }
+        .node.review { fill: #FE2712; }
+        .node.defined { fill: #A7194B; }
+        .node.in-progress { fill: #0247FE; }
+        .node.completed { fill: #0392CE; }
+        .node.accepted { fill: #66B032; }
+        .node.ready { fill: #000000; }
 
         .link {
             fill: none;
@@ -127,6 +127,47 @@
                             window.open("https://rally1.rallydev.com/#/detail/userstory/" + story.ObjectID);
                             break;
                         case "add":
+
+                            /*
+                            var myURL = "https://rally1.rallydev.com/slm/webservice/v2.0/hierarchicalrequirement/" + d.ObjectID;
+                            //$.get(myURL, function () { alert("success"); });
+
+                            var myJSONObj = {
+                            Name: 'foo',
+                            Parent: 'bar'
+                            };
+
+                            $.ajax({
+                            url: "https://rally1.rallydev.com/slm/webservice/v2.0/hierarchicalrequirement/create",
+                            type: "POST",
+                            dataType: "xml/html/script/json", // expected format for response
+                            contentType: "text/json", // send as JSON
+                            data: JSON.stringify(myJSONObj),
+                            processData: false,
+                            complete: function() {
+                            //called when complete
+                            },
+
+                            success: function(data) {
+                            //called when successful
+
+                            console.log(data);
+
+                            var newNode = {
+                            name: "Test node",
+                            depth: d.depth + 1,
+                            id: ++numStories
+                            }
+                            addNewNode([root], d.id, newNode);
+                            update(root);
+                            },
+
+                            error: function() {
+                            //called when there is an error
+                            },
+                            });
+                            */
+
                             var newStory = {
                                 name: "Test node",
                                 depth: story.depth + 1,
