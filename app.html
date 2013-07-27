@@ -59,7 +59,7 @@
     <button class="zoomOut" style="top:80;">Zoom out!</button>
     <button class="reset" onclick="expand(root);" style="top:110;">Reset!</button>
     <script>
-        // Credit for convert to Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
+        // Adapted from Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
         function convert(array) {
             var map = {};
 
@@ -86,7 +86,7 @@
                     map[parent].children = [];
                 }
                 map[parent].children.push(obj);
-
+                if (parent == '-') { console.log(obj); } // PHIL:  Trying to figure out how to parent stories + port items
             }
 
             return { name: "D2L", children: map['-'].children };
@@ -136,7 +136,18 @@
                     var story = options.$trigger[0].__data__;
                     switch( key ) {
                         case "goto":
-                            window.open("https://rally1.rallydev.com/#/detail/userstory/" + story.ObjectID);
+                            switch (story.FormattedID.substring(0,1)) {
+                                case 'I':
+                                    window.open("https://rally1.rallydev.com/#/" + story.ProjectID + "/detail/portfolioitem/initiative/" + story.ObjectID);
+                                    break;
+                                case 'F':
+                                    window.open("https://rally1.rallydev.com/#/" + story.ProjectID + "/detail/portfolioitem/feature/" + story.ObjectID);
+                                    break;
+                                default:
+                                    window.open("https://rally1.rallydev.com/#/" + story.ProjectID + "/detail/userstory/" + story.ObjectID);
+                                    break;
+                            }
+                            
                             break;
                         case "add":
 
@@ -210,261 +221,324 @@
         Rally.onReady(function () {
             Ext.application({
                 name: 'MyApp',
+                dataRecords: null,
                 launch: function () {
 
-                    var storyArray = [];
+                    //var storyArray = [];
+
+                    this.dataRecords = [];
 
                     Ext.create('Rally.data.WsapiDataStore', {
-                        model: 'UserStory',
+                        model: 'PortfolioItem',
                         autoLoad: true,
                         limit: Infinity,
-                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner'],
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project'],
                         listeners: {
-                            load: function (store, stories) {
-
-                                var div = d3.select("body").append("div")
-                                    .attr("class", "tooltip")
-                                    .style("opacity", 0);
-
-                                var maxLength = 0; // Length of longest story name (after truncation)
-                                var truncateLength = 80; // truncates story names to this number of characters
-                                var marginPerCharacter = 5.5; // used to scale the margin in proportion to the number of characters in the name
-                                var heightPerStory = 20;
-
-                                Ext.Array.each(stories, function (story) {
-
-                                    var truncatedName = story.get('Name').substring(0, truncateLength);
-
-                                    if (truncatedName.length == truncateLength) { truncatedName += "..."; }
-                                    
-                                    if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
-                                        storyArray.push({ name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ParentID: story.get('Parent').FormattedID });
-                                    }
-                                    else {
-                                        storyArray.push({ name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner') });
-                                    }
-
-                                    if (truncatedName.length > maxLength) {
-                                        maxLength = truncatedName.length;
-                                    }
-                                });
-
-                                function decode(str) {
-                                    return $("<div/>").html(str).text();
-                                }
-
-                                $.each(storyArray, function (i, s) {
-                                    s.name = decode(s.name);
-                                    s.FullName = decode(s.FullName);
-                                    s.Description = decode(s.Description);
-                                });
-
-                                //console.log(storyArray);
-
-                                numStories = storyArray.length;
-                                var convertedStoryArray = convert(storyArray);
-
-                                //console.log(convertedStoryArray);
-
-                                var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: 120 },
-                                height = (storyArray.length * heightPerStory) - margin.top - margin.bottom;
-
-                                var i = 0,
-                                duration = 500;
-
-                                root = convertedStoryArray;
-                                root.x0 = height / 2;
-                                root.y0 = 0;
-
-                                toggle = function () {
-                                    treeToggle = !treeToggle;
-                                    update(root);    
-                                }
-
-                                var tree = d3.layout.cluster();
-
-                                var maxDepth = 0;
-                                tree.nodes(root).forEach(function(d) {
-                                    if( d.depth > maxDepth ) {
-                                        maxDepth = d.depth;
-                                    }
-                                });
-
-                                var width = ( 180 * ( maxDepth + 3 ) ) - margin.right - margin.left;
-
-                                tree.size([height, width]);
-
-                                var diagonal = d3.svg.diagonal()
-                                .projection(function (d) { return [d.y, d.x]; });
-
-                                var svg = d3.select("body").append("svg")
-                                .attr("id", "panzoom-svg")
-                                .attr("width", width + margin.right + margin.left)
-                                .attr("height", height + margin.top + margin.bottom)
-                                .append("g")
-                                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-                                update = function(source) {
-
-
-                                    // Compute the new tree layout.
-                                    var nodes = tree.nodes(root).reverse(),
-                                    links = tree.links(nodes);
-
-                                    // Position for nodes based on depth
-                                    nodes.forEach(function(d) {
-                                        if( treeToggle || d.children ) {
-                                            d.y = d.depth * 180;
-                                        } else {
-                                            d.y = maxDepth * 180;
-                                        }
-                                    });
-
-                                    // Update the nodes
-                                    var node = svg.selectAll("g.node")
-                                    .data(nodes, function (d) { return d.id || (d.id = ++i); });
-
-                                    // Enter any new nodes at the parent's previous position.
-                                    var nodeEnter = node.enter().append("g")
-                                    .attr("class", function (d) {
-                                        var classString = "context-menu node";
-                                        switch (d.ScheduleState) {
-                                            case "In Review":
-                                                classString += " review";
-                                                break;
-                                            case "Defined":
-                                                classString += " defined";
-                                                break;
-                                            case "In-Progress":
-                                                classString += " in-progress";
-                                                break;
-                                            case "Completed":
-                                                classString += " completed";
-                                                break;
-                                            case "Accepted":
-                                                classString += " accepted";
-                                                break;
-                                            case "Ready for Release":
-                                                classString += " ready";
-                                                break;
-                                            default: break;
-                                        }
-                                        return classString;
-                                    })
-                                    .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
-                                    .on("click", click)
-                                    .on("mouseover", function (d) {
-
-                                        var content = "";
-
-                                        if ( !d.Owner && !d.Description ) return; 
-
-                                        content = "<b>Owner:</b> ";
-                                        content += d.Owner ? d.Owner._refObjectName : "(None)";
-                                        
-                                        if (d.Description) {
-                                            content += "<br><br><b>Description:</b>: " + d.Description;
-                                        }
-                                        
-                                        div.transition()
-                                            .duration(200)
-                                            .style("opacity", .9);
-                                        div.html(content)
-                                            .style("left", (d3.event.pageX) + "px")
-                                            .style("top", (d3.event.pageY - 28) + "px");
-                                    })
-                                    .on("mouseout", function (d) {
-                                        div.transition()
-                                            .duration(500)
-                                            .style("opacity", 0);
-                                    });
-
-                                    nodeEnter.append("circle")
-                                    .attr("r", 1e-6)
-                                    .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
-
-                                    nodeEnter.append("text")
-                                    .attr("x", function (d) { return d.children || d._children ? -10 : 10; })
-                                    .attr("dy", ".35em")
-                                    .attr("text-anchor", function (d) { return d.children || d._children ? "end" : "start"; })
-                                    .text(function (d) { return d.name; })
-                                    .style("fill-opacity", 1e-6);
-
-                                    // Transition nodes to their new position.
-                                    var nodeUpdate = node.transition()
-                                    .duration(duration)
-                                    .attr("transform", function (d) { return "translate(" + d.y + "," + d.x + ")"; });
-
-                                    nodeUpdate.select("circle")
-                                    .attr("r", 4.5)
-                                    .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
-
-                                    nodeUpdate.select("text")
-                                    .attr("x", function (d) { return d.children ? -10 : 10; })
-                                    .attr("text-anchor", function (d) { return d.children ? "end" : "start"; })
-                                    .style("fill-opacity", 1);
-
-                                    // Transition exiting nodes to the parent's new position.
-                                    var nodeExit = node.exit().transition()
-                                    .duration(duration)
-                                    .attr("transform", function (d) { return "translate(" + source.y + "," + source.x + ")"; })
-                                    .remove();
-
-                                    nodeExit.select("circle")
-                                    .attr("r", 1e-6);
-
-                                    nodeExit.select("text")
-                                    .style("fill-opacity", 1e-6);
-
-                                    // Update the links
-                                    var link = svg.selectAll("path.link")
-                                    .data(links, function (d) { return d.target.id; });
-
-                                    // Enter any new links at the parent's previous position.
-                                    link.enter().insert("path", "g")
-                                    .attr("class", "link")
-                                    .attr("d", function (d) {
-                                        var o = { x: source.x0, y: source.y0 };
-                                        return diagonal({ source: o, target: o });
-                                    });
-
-                                    // Transition links to their new position.
-                                    link.transition()
-                                    .duration(duration)
-                                    .attr("d", diagonal);
-
-                                    // Transition exiting nodes to the parent's new position.
-                                    link.exit().transition()
-                                    .duration(duration)
-                                    .attr("d", function (d) {
-                                        var o = { x: source.x, y: source.y };
-                                        return diagonal({ source: o, target: o });
-                                    })
-                                    .remove();
-
-                                    // Stash the old positions for transition.
-                                    nodes.forEach(function (d) {
-                                        d.x0 = d.x;
-                                        d.y0 = d.y;
-                                    });
-                                }
-
-                                update(root);
-
-                                $(document).ready(function() {
-                                    $("#panzoom-svg").panzoom({
-                                        $zoomIn: $(".zoomIn"),
-                                        $zoomOut: $(".zoomOut"),
-                                        $reset: $(".reset"),
-                                        cursor: "default"
-                                    });
-                                });
-
-                            }
+                            load: this._processPortfolioItems,
+                            scope: this
                         }
                     });
-                }
-            });
-        });
+                },
+
+                    _processPortfolioItems: function(store, items)
+                    {
+                        var portfolioRecords = [];
+
+                        var maxLength = 0; // Length of longest story name (after truncation)
+                        var truncateLength = 80; // truncates story names to this number of characters
+
+                        Ext.Array.each(items, function (story) {
+
+                            var truncatedName = story.get('Name').substring(0, truncateLength);
+                            if (truncatedName.length == truncateLength) { truncatedName += "..."; }
+                                    
+                            var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
+
+                            if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                                storyDetails.ParentID = story.get('Parent').FormattedID;
+                            } else if (story.get('PortfolioItem') !== null && story.get('Parent') !== undefined) {
+                                storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
+                            }
+                            
+                            portfolioRecords.push(storyDetails);
+
+                            if (truncatedName.length > maxLength) {
+                                maxLength = truncatedName.length;
+                            }
+                        });
+
+                        this.dataRecords = portfolioRecords;
+                        
+
+                    Ext.create('Rally.data.WsapiDataStore', {
+                        model: 'HierarchicalRequirement',
+                        autoLoad: true,
+                        limit: Infinity,
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
+                        listeners: {
+                            load: this._processHierarchicalRequirements,
+                            scope: this
+                        }
+                    });
+
+                },
+
+                    _processHierarchicalRequirements: function(store, stories)
+                    {
+                        var storyRecords = [];
+
+                        var maxLength = 0; // Length of longest story name (after truncation)
+                        var truncateLength = 80; // truncates story names to this number of characters
+                        
+                        Ext.Array.each(stories, function (story) {
+
+                            var truncatedName = story.get('Name').substring(0, truncateLength);
+                            if (truncatedName.length == truncateLength) { truncatedName += "..."; }
+                                                      
+
+                            var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
+                                                     
+
+                            if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                                storyDetails.ParentID = story.get('Parent').FormattedID;
+                            } else if (story.get('PortfolioItem') !== null && story.get('Parent') !== undefined) {
+                                storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
+                            }
+                            
+                            storyRecords.push(storyDetails);
+
+                            if (truncatedName.length > maxLength) {
+                                maxLength = truncatedName.length;
+                            }
+                        });
+                        
+                        var combinedData = storyRecords.concat(this.dataRecords)
+                        
+
+                        var div = d3.select("body").append("div")
+                                        .attr("class", "tooltip")
+                                        .style("opacity", 0);
+
+                        
+                        var marginPerCharacter = 5.5; // used to scale the margin in proportion to the number of characters in the name
+                        var heightPerStory = 20;
+                        
+                        function decode(str) {
+                            return $("<div/>").html(str).text();
+                        }
+
+                        $.each(combinedData, function (i, s) {
+                            s.name = decode(s.name);
+                            s.FullName = decode(s.FullName);
+                            s.Description = decode(s.Description);
+                        });
+                       
+                        numStories = combinedData.length;
+                        var convertedStoryArray = convert(combinedData);
+                        
+                        var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: (marginPerCharacter / 2) * maxLength },
+                        height = (combinedData.length * heightPerStory) - margin.top - margin.bottom;
+
+                        var i = 0,
+                        duration = 500;
+
+                        root = convertedStoryArray;
+                        root.x0 = height / 2;
+                        root.y0 = 0;
+
+                        toggle = function () {
+                            treeToggle = !treeToggle;
+                            update(root);    
+                        }
+
+                        var tree = d3.layout.cluster();
+
+                        var maxDepth = 0;
+                        tree.nodes(root).forEach(function(d) {
+                            if( d.depth > maxDepth ) {
+                                maxDepth = d.depth;
+                            }
+                        });
+
+                        var width = ( 180 * ( maxDepth + 3 ) ) - margin.right - margin.left;
+
+                        tree.size([height, width]);
+
+                        var diagonal = d3.svg.diagonal()
+                        .projection(function (d) { return [d.y, d.x]; });
+
+                        var svg = d3.select("body").append("svg")
+                        .attr("id", "panzoom-svg")
+                        .attr("width", width + margin.right + margin.left)
+                        .attr("height", height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                        update = function(source) {
+
+
+                            // Compute the new tree layout.
+                            var nodes = tree.nodes(root).reverse(),
+                            links = tree.links(nodes);
+
+                            // Position for nodes based on depth
+                            nodes.forEach(function(d) {
+                                if( treeToggle || d.children ) {
+                                    d.y = d.depth * 180;
+                                } else {
+                                    d.y = maxDepth * 180;
+                                }
+                            });
+
+                            // Update the nodes
+                            var node = svg.selectAll("g.node")
+                            .data(nodes, function (d) { return d.id || (d.id = ++i); });
+
+                            // Enter any new nodes at the parent's previous position.
+                            var nodeEnter = node.enter().append("g")
+                            .attr("class", function (d) {
+                                var classString = "context-menu node";
+                                switch (d.ScheduleState) {
+                                    case "In Review":
+                                        classString += " review";
+                                        break;
+                                    case "Defined":
+                                        classString += " defined";
+                                        break;
+                                    case "In-Progress":
+                                        classString += " in-progress";
+                                        break;
+                                    case "Completed":
+                                        classString += " completed";
+                                        break;
+                                    case "Accepted":
+                                        classString += " accepted";
+                                        break;
+                                    case "Ready for Release":
+                                        classString += " ready";
+                                        break;
+                                    default: break;
+                                }
+                                return classString;
+                            })
+                            .attr("transform", function (d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+                            .on("click", click)
+                            .on("mouseover", function (d) {
+
+                                var content = "";
+
+                                
+
+                                content = "<b>" + d.FormattedID + " " + d.FullName + "</b><br><br><b>Owner:</b> ";
+                                content += d.Owner ? d.Owner._refObjectName : "(None)";
+                                        
+                                if (d.Description) {
+                                    content += "<br><br><b>Description:</b>: " + d.Description;
+                                }
+                                        
+                                div.transition()
+                                    .duration(200)
+                                    .style("opacity", .9);
+                                div.html(content)
+                                    .style("left", (d3.event.pageX) + "px")
+                                    .style("top", (d3.event.pageY - 28) + "px");
+                            })
+                            .on("mouseout", function (d) {
+                                div.transition()
+                                    .duration(500)
+                                    .style("opacity", 0);
+                            });
+
+                            nodeEnter.append("circle")
+                            .attr("r", 1e-6)
+                            .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+                            nodeEnter.append("text")
+                            .attr("x", function (d) { return d.children || d._children ? -10 : 10; })
+                            .attr("dy", ".35em")
+                            .attr("text-anchor", function (d) { return d.children || d._children ? "end" : "start"; })
+                            .text(function (d) { return d.name; })
+                            .style("fill-opacity", 1e-6);
+
+                            // Transition nodes to their new position.
+                            var nodeUpdate = node.transition()
+                            .duration(duration)
+                            .attr("transform", function (d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+                            nodeUpdate.select("circle")
+                            .attr("r", 4.5)
+                            .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+                            nodeUpdate.select("text")
+                            .attr("x", function (d) { return d.children ? -10 : 10; })
+                            .attr("text-anchor", function (d) { return d.children ? "end" : "start"; })
+                            .style("fill-opacity", 1);
+
+                            // Transition exiting nodes to the parent's new position.
+                            var nodeExit = node.exit().transition()
+                            .duration(duration)
+                            .attr("transform", function (d) { return "translate(" + source.y + "," + source.x + ")"; })
+                            .remove();
+
+                            nodeExit.select("circle")
+                            .attr("r", 1e-6);
+
+                            nodeExit.select("text")
+                            .style("fill-opacity", 1e-6);
+
+                            // Update the links
+                            var link = svg.selectAll("path.link")
+                            .data(links, function (d) { return d.target.id; });
+
+                            // Enter any new links at the parent's previous position.
+                            link.enter().insert("path", "g")
+                            .attr("class", "link")
+                            .attr("d", function (d) {
+                                var o = { x: source.x0, y: source.y0 };
+                                return diagonal({ source: o, target: o });
+                            });
+
+                            // Transition links to their new position.
+                            link.transition()
+                            .duration(duration)
+                            .attr("d", diagonal);
+
+                            // Transition exiting nodes to the parent's new position.
+                            link.exit().transition()
+                            .duration(duration)
+                            .attr("d", function (d) {
+                                var o = { x: source.x, y: source.y };
+                                return diagonal({ source: o, target: o });
+                            })
+                            .remove();
+
+                            // Stash the old positions for transition.
+                            nodes.forEach(function (d) {
+                                d.x0 = d.x;
+                                d.y0 = d.y;
+                            });
+                        }
+
+                        update(root);
+
+                        $(document).ready(function() {
+                            $("#panzoom-svg").panzoom({
+                                $zoomIn: $(".zoomIn"),
+                                $zoomOut: $(".zoomOut"),
+                                $reset: $(".reset"),
+                                cursor: "default"
+                            });
+                        });
+                    }
+
+                    
+
+                                    
+
+                                }
+                            
+                        );
+                    }
+                )
     </script>
 </body>
