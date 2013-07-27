@@ -86,7 +86,7 @@
                     map[parent].children = [];
                 }
                 map[parent].children.push(obj);
-                if (parent == '-') { console.log(obj); } // PHIL:  Trying to figure out how to parent stories + port items
+                
             }
 
             return { name: "D2L", children: map['-'].children };
@@ -230,9 +230,13 @@
 
                     Ext.create('Rally.data.WsapiDataStore', {
                         model: 'PortfolioItem',
+                        /*context: {
+                            projectScopeDown: true,
+                            projectScopeUp: true
+                        },*/
                         autoLoad: true,
                         limit: Infinity,
-                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project'],
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
                         listeners: {
                             load: this._processPortfolioItems,
                             scope: this
@@ -253,12 +257,12 @@
                             if (truncatedName.length == truncateLength) { truncatedName += "..."; }
                                     
                             var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
-
+                            
                             if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
                                 storyDetails.ParentID = story.get('Parent').FormattedID;
-                            } else if (story.get('PortfolioItem') !== null && story.get('Parent') !== undefined) {
+                            } else if (story.get('PortfolioItem') !== null && story.get('PortfolioItem') !== undefined) {
                                 storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
-                            }
+                            } 
                             
                             portfolioRecords.push(storyDetails);
 
@@ -301,7 +305,7 @@
 
                             if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
                                 storyDetails.ParentID = story.get('Parent').FormattedID;
-                            } else if (story.get('PortfolioItem') !== null && story.get('Parent') !== undefined) {
+                            } else if (story.get('PortfolioItem') !== null && story.get('PortfolioItem') !== undefined) {
                                 storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
                             }
                             
