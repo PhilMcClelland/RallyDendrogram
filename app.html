@@ -66,19 +66,31 @@
             for (var i = 0; i < array.length; i++) {
                 var obj = array[i];
 
-                map[obj.FormattedID] = obj;
-
-                var parent = obj.ParentID || '-';
-                if (!map[parent]) {
-                    map[parent] = {};
+                var temp = null;
+                
+                if (map[obj.FormattedID]) {
+                   temp = map[obj.FormattedID]
                 }
+                map[obj.FormattedID] = obj;
+                if (temp) { map[obj.FormattedID].children = temp.children; }
+                
+                var parent = obj.ParentID || '-';
 
-                if( map[parent].children === undefined ) map[parent].children = [];
+
+                if (!map[parent]) {
+                    map[parent] = [];
+                }
+                
+
+                if (map[parent].children === undefined) {
+                    map[parent].children = [];
+                }
                 map[parent].children.push(obj);
+
             }
 
             return { name: "D2L", children: map['-'].children };
-
+            
         }
 
         // Globals
@@ -224,12 +236,12 @@
                                     var truncatedName = story.get('Name').substring(0, truncateLength);
 
                                     if (truncatedName.length == truncateLength) { truncatedName += "..."; }
-
+                                    
                                     if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
-                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ParentID: story.get('Parent').FormattedID });
+                                        storyArray.push({ name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ParentID: story.get('Parent').FormattedID });
                                     }
                                     else {
-                                        storyArray.push({ name: truncatedName, FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner') });
+                                        storyArray.push({ name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner') });
                                     }
 
                                     if (truncatedName.length > maxLength) {
@@ -243,11 +255,16 @@
 
                                 $.each(storyArray, function (i, s) {
                                     s.name = decode(s.name);
+                                    s.FullName = decode(s.FullName);
                                     s.Description = decode(s.Description);
                                 });
 
+                                //console.log(storyArray);
+
                                 numStories = storyArray.length;
                                 var convertedStoryArray = convert(storyArray);
+
+                                //console.log(convertedStoryArray);
 
                                 var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: 120 },
                                 height = (storyArray.length * heightPerStory) - margin.top - margin.bottom;
