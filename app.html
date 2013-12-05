@@ -40,7 +40,6 @@
             position: fixed;
             left: 25;
             z-index: 1;
-            width: 75;
         }
     </style>
 
@@ -54,13 +53,12 @@
 
 </head>
 <body>
-    <button onclick="toggle()" style="top:20;">Toggle!</button>
-    <button class="zoomIn" style="top:50;">Zoom in!</button>
-    <button class="zoomOut" style="top:80;">Zoom out!</button>
-    <button class="reset" onclick="expand(root);" style="top:110;">Reset!</button>
+    <button onclick="toggle()" style="top:20;">Tree/Dendrogram</button>
+    <button class="zoomIn" style="top:50;">Zoom in</button>
+    <button class="zoomOut" style="top:80;">Zoom out</button>
+    <button class="reset" onclick="expand(root);" style="top:110;">Reset</button>
     <script>
         // Adapted from Arun P Johny, http://stackoverflow.com/questions/15376251/hierarchical-json-from-flat-with-parent-id-using-javascript
-        // Phil TODO:  Why does this bork converting an array of PortfolioItem/Feature + HierarchicalRequirement
         function convert(array) {
             var map = {};
 
@@ -68,7 +66,7 @@
                 var obj = array[i];
 
                 var temp = null;
-                console.log(obj);
+                //console.log(obj);
                 if (map[obj.FormattedID]) {
                    temp = map[obj.FormattedID]
                 }
@@ -93,6 +91,68 @@
             return { name: "D2L", children: map['-'].children };
             
         }
+
+        /*
+        function filterChildlessInitiativesAndObjectives(tree) {
+            for (var i = 0; i < tree.length; i++) {
+                var obj = tree[i];
+                if (obj.children) {
+                    if (filterChildlessInitiativesAndObjectives(obj.children, label)) {
+                        if (obj.children.length === 0 && (obj.FormattedID[0] == 'I' || obj.FormattedID[0] == 'O')) {
+                            tree.splice(i, 1);
+                        }
+                        return true;
+                    }
+                }
+                else {
+                    return true;
+                }
+            }
+        }*/
+
+        
+        // PHIL TODO: This isn't working yet.
+        function filterChildlessInitiativesAndObjectives(tree) {
+            var filteredTree = tree;
+
+            //console.log("Filter This");
+            //console.log(filteredTree);
+  
+            if (filteredTree.children && filteredTree.children.length > 0) {
+                //console.log("Should have children.  They are as follows (first is named " + filteredTree.children[0].name +"):");
+                //console.log(filteredTree.children);
+                
+                for (var i = 0; i < filteredTree.children.length; i++) {
+                    var result = filterChildlessInitiativesAndObjectives(filteredTree.children[i]);
+                    //console.log("result " + filteredTree.children.length);
+                    //console.log(result);
+                    if (!result) {
+                        filteredTree.children.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                //PHIL: You'd left off here.  This extra set of checks probably isn't the right approach here.
+                if (filteredTree.children.length = 0 && (filteredTree.name.substring(0, 1) == 'I' || filteredTree.name.substring(0, 1) == 'O')) {
+                    console.log("I/O and all my children were pruned.  Prune me.  Prune me:");
+                    console.log(filteredTree);
+                    return false; // all my children were pruned.  Prune me too!
+                } else
+                { return filteredTree; }
+            }
+            else if (filteredTree.name.substring(0, 1) == 'I' || filteredTree.name.substring(0, 1) == 'O') {
+                console.log("I/O with no children.  Prune me:");
+                console.log(filteredTree);
+                return false;
+            }
+            else {
+                console.log("Keep");
+                console.log(filteredTree);
+                return filteredTree;
+            }
+            
+        }
+
 
         // Globals
         var treeToggle = true;
@@ -138,6 +198,9 @@
                     switch( key ) {
                         case "goto":
                             switch (story.FormattedID.substring(0,1)) {
+                                case 'O':
+                                    window.open("https://rally1.rallydev.com/#/" + story.ProjectID + "/detail/portfolioitem/objective/" + story.ObjectID);
+                                    break;
                                 case 'I':
                                     window.open("https://rally1.rallydev.com/#/" + story.ProjectID + "/detail/portfolioitem/initiative/" + story.ObjectID);
                                     break;
@@ -229,11 +292,13 @@
 
                     this.dataRecords = [];
 
+                    console.log("Start Fetching.  Will confirm when done");
+
                     Ext.create('Rally.data.WsapiDataStore', {
                         model: 'PortfolioItem/Feature',
                         context: {
-                        projectScopeDown: true,
-                        projectScopeUp: true
+                            projectScopeDown: true,
+                            projectScopeUp: true
                         },
                         autoLoad: true,
                         limit: Infinity,
@@ -273,8 +338,96 @@
 
                     this.dataRecords = featureRecords;
 
+                    Ext.create('Rally.data.WsapiDataStore', { // fetch objectives from *parent* projects, though most (all?) will actually be stored in a parallel project
+                        model: 'PortfolioItem/Objective',
+                        context: {
+                            projectScopeDown: true,
+                            projectScopeUp: true
+                        },
+                        autoLoad: true,
+                        limit: Infinity,
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
+                        listeners: {
+                            load: this._processObjectives,
+                            scope: this
+                        }
+                    });
 
-                    Ext.create('Rally.data.WsapiDataStore', {
+                },
+
+                _processObjectives: function (store, items) {
+                    var objectiveRecords = [];
+
+                    var maxLength = 0; // Length of longest story name (after truncation)
+                    var truncateLength = 80; // truncates story names to this number of characters
+
+                    Ext.Array.each(items, function (story) {
+
+                        var truncatedName = story.get('Name').substring(0, truncateLength);
+                        if (truncatedName.length == truncateLength) { truncatedName += "..."; }
+
+                        var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
+
+                        if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                            storyDetails.ParentID = story.get('Parent').FormattedID;
+                        } else if (story.get('PortfolioItem') !== null && story.get('PortfolioItem') !== undefined) {
+                            storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
+                        }
+
+                        objectiveRecords.push(storyDetails);
+
+                        if (truncatedName.length > maxLength) {
+                            maxLength = truncatedName.length;
+                        }
+                    });
+
+                    this.dataRecords = objectiveRecords.concat(this.dataRecords);
+
+                    Ext.create('Rally.data.WsapiDataStore', { // fetch objectives from the 'Objectives and Common Initiatives' Project
+                        model: 'PortfolioItem/Objective',
+                        context: {
+                            project: '/project/13772237994'
+                        },
+                        autoLoad: true,
+                        limit: Infinity,
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
+                        listeners: {
+                            load: this._processCommonObjectives,
+                            scope: this
+                        }
+                    });
+
+                },
+
+                _processCommonObjectives: function (store, items) {
+                    var commonObjectivesRecords = [];
+
+                    var maxLength = 0; // Length of longest story name (after truncation)
+                    var truncateLength = 80; // truncates story names to this number of characters
+
+                    Ext.Array.each(items, function (story) {
+
+                        var truncatedName = story.get('Name').substring(0, truncateLength);
+                        if (truncatedName.length == truncateLength) { truncatedName += "..."; }
+
+                        var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
+
+                        if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                            storyDetails.ParentID = story.get('Parent').FormattedID;
+                        } else if (story.get('PortfolioItem') !== null && story.get('PortfolioItem') !== undefined) {
+                            storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
+                        }
+
+                        commonObjectivesRecords.push(storyDetails);
+
+                        if (truncatedName.length > maxLength) {
+                            maxLength = truncatedName.length;
+                        }
+                    });
+
+                    this.dataRecords = commonObjectivesRecords.concat(this.dataRecords);
+
+                    Ext.create('Rally.data.WsapiDataStore', { // fetch initiatives from *parent* projects, though some will be stored in a parallel project
                         model: 'PortfolioItem/Initiative',
                         context: {
                             projectScopeDown: true,
@@ -298,7 +451,7 @@
                     var truncateLength = 80; // truncates story names to this number of characters
 
                     Ext.Array.each(items, function (story) {
-                        
+
                         var truncatedName = story.get('Name').substring(0, truncateLength);
                         if (truncatedName.length == truncateLength) { truncatedName += "..."; }
 
@@ -318,9 +471,57 @@
                     });
 
                     this.dataRecords = initiativeRecords.concat(this.dataRecords);
-                    
-                    Ext.create('Rally.data.WsapiDataStore', {
+
+                    Ext.create('Rally.data.WsapiDataStore', {// fetch objectives from the 'Objectives and Common Initiatives' Project
+                        model: 'PortfolioItem/Initiative',
+                        context: {
+                            project: '/project/13772237994'
+                        },
+                        autoLoad: true,
+                        limit: Infinity,
+                        fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
+                        listeners: {
+                            load: this._processCommonInitiatives,
+                            scope: this
+                        }
+                    });
+
+                },
+
+                _processCommonInitiatives: function (store, items) {
+                    var commonInititativesRecords = [];
+
+                    var maxLength = 0; // Length of longest story name (after truncation)
+                    var truncateLength = 80; // truncates story names to this number of characters
+
+                    Ext.Array.each(items, function (story) {
+
+                        var truncatedName = story.get('Name').substring(0, truncateLength);
+                        if (truncatedName.length == truncateLength) { truncatedName += "..."; }
+
+                        var storyDetails = { name: story.get('FormattedID') + " " + truncatedName, FullName: story.get('Name'), FormattedID: story.get('FormattedID'), Description: story.get('Description'), ScheduleState: story.get('ScheduleState'), ObjectID: story.get('ObjectID'), Owner: story.get('Owner'), ProjectID: story.get('Project').ObjectID };
+
+                        if (story.get('Parent') !== null && story.get('Parent') !== undefined) {
+                            storyDetails.ParentID = story.get('Parent').FormattedID;
+                        } else if (story.get('PortfolioItem') !== null && story.get('PortfolioItem') !== undefined) {
+                            storyDetails.ParentID = story.get('PortfolioItem').FormattedID;
+                        }
+
+                        commonInititativesRecords.push(storyDetails);
+
+                        if (truncatedName.length > maxLength) {
+                            maxLength = truncatedName.length;
+                        }
+                    });
+
+                    this.dataRecords = commonInititativesRecords.concat(this.dataRecords);
+
+                    Ext.create('Rally.data.WsapiDataStore', { // fetch initiatives from *parent* projects, though some will be stored in a parallel project
                         model: 'HierarchicalRequirement',
+                        context: {
+                            projectScopeDown: true,
+                            projectScopeUp: true
+                        },
                         autoLoad: true,
                         limit: Infinity,
                         fetch: ['Name', 'FormattedID', 'Description', 'Parent', 'ScheduleState', 'ObjectID', 'Owner', 'Project', 'PortfolioItem'],
@@ -360,7 +561,7 @@
                         }
                     });
 
-                    var combinedData = storyRecords.concat(this.dataRecords)
+                    this.dataRecords = storyRecords.concat(this.dataRecords)
 
                     var div = d3.select("body").append("div")
                                         .attr("class", "tooltip")
@@ -374,22 +575,30 @@
                         return $("<div/>").html(str).text();
                     }
 
-                    $.each(combinedData, function (i, s) {
+                    $.each(this.dataRecords, function (i, s) {
                         s.name = decode(s.name);
                         s.FullName = decode(s.FullName);
                         s.Description = decode(s.Description);
                     });
 
-                    numStories = combinedData.length;
-                    var convertedStoryArray = convert(combinedData);
+                    numStories = this.dataRecords.length;
+
+                    console.log("Done Fetching");
+
+                    var storyTree = convert(this.dataRecords); // convert array of records to tree
+
+                    //storyTree = filterChildlessInitiativesAndObjectives(storyTree);
+
+                    console.log("Filtered:");
+                    console.log(storyTree);
 
                     var margin = { top: 20, right: marginPerCharacter * maxLength, bottom: 20, left: marginPerCharacter * maxLength },
-                        height = (combinedData.length * heightPerStory) - margin.top - margin.bottom;
+                        height = (this.dataRecords.length * heightPerStory) - margin.top - margin.bottom;
 
                     var i = 0,
                         duration = 500;
 
-                    root = convertedStoryArray;
+                    root = storyTree;
                     root.x0 = height / 2;
                     root.y0 = 0;
 
@@ -436,6 +645,7 @@
                                 d.y = maxDepth * 180;
                             }
                         });
+
 
                         // Update the nodes
                         var node = svg.selectAll("g.node")
